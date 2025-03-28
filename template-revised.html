@@ -1,0 +1,617 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Call Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .transcript-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .prompt-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        
+        .form-field {
+            margin-bottom: 15px;
+        }
+        
+        .field-status {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .field-complete {
+            background-color: #28a745;
+        }
+        
+        .field-incomplete {
+            background-color: #dc3545;
+        }
+        
+        .stage-indicator {
+            display: flex;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        
+        .stage {
+            flex: 0 0 auto;
+            margin-right: 5px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background-color: #e9ecef;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        
+        .stage.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .stage.completed {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .transcript-entry {
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .transcript-customer {
+            color: #0d6efd;
+        }
+        
+        .transcript-agent {
+            color: #198754;
+        }
+        
+        .transcript-timestamp {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+        
+        .ticket-preview {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .progress {
+            height: 8px;
+        }
+        
+        .tooltip-inner {
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Support Call Assistant</h5>
+                        <div>
+                            <span class="badge bg-light text-dark me-2" id="status-badge">Ready</span>
+                            <span id="timer">00:00</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="stage-indicator" id="stage-indicator">
+                            <div class="stage active" data-stage="intro">Introduction</div>
+                            <div class="stage" data-stage="caller_identity">Caller Identity</div>
+                            <div class="stage" data-stage="company_info">Company Info</div>
+                            <div class="stage" data-stage="software_details">Software Details</div>
+                            <div class="stage" data-stage="issue_details">Issue Details</div>
+                            <div class="stage" data-stage="error_messages">Error Messages</div>
+                            <div class="stage" data-stage="troubleshooting_history">Troubleshooting</div>
+                            <div class="stage" data-stage="technician_availability">Tech Availability</div>
+                            <div class="stage" data-stage="support_options">Support Options</div>
+                            <div class="stage" data-stage="billing_confirmation">Billing</div>
+                            <div class="stage" data-stage="summary">Summary</div>
+                            <div class="stage" data-stage="next_steps">Next Steps</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <div>
+                                <button id="btn-start-recording" class="btn btn-success me-2">
+                                    <i class="bi bi-mic-fill"></i> Start Recording
+                                </button>
+                                <button id="btn-stop-recording" class="btn btn-danger me-2" disabled>
+                                    <i class="bi bi-stop-fill"></i> Stop Recording
+                                </button>
+                            </div>
+                            <div>
+                                <button id="btn-prev-stage" class="btn btn-outline-secondary me-2">
+                                    <i class="bi bi-arrow-left"></i> Previous Stage
+                                </button>
+                                <button id="btn-next-stage" class="btn btn-outline-primary">
+                                    Next Stage <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mb-3">
+                            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Agent Guidance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="prompt-box" id="current-prompt">
+                            Welcome to technical support. Please collect the caller's information.
+                        </div>
+                        
+                        <h6>Required Information:</h6>
+                        <div class="form-group" id="information-fields">
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-caller_first_name"></span> Caller's First Name:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-caller_first_name" data-field="caller_first_name">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-caller_last_name"></span> Caller's Last Name:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-caller_last_name" data-field="caller_last_name">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-company_name"></span> Company Name:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-company_name" data-field="company_name">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-software_make"></span> Software Make:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-software_make" data-field="software_make" placeholder="e.g. Bluebeam, SolidWorks, AutoCAD">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-software_model"></span> Software Model:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-software_model" data-field="software_model" placeholder="e.g. Revu, Standard, LT">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-software_version"></span> Software Version:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <input type="text" class="form-control" id="field-software_version" data-field="software_version" placeholder="e.g. 21, 2019, 2024">
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-issue_type"></span> Issue Type:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <select class="form-select" id="field-issue_type" data-field="issue_type">
+                                    <option value="">Select...</option>
+                                    <option value="how-to">How-To Question</option>
+                                    <option value="error">Software Error</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-issue_description"></span> Issue Description:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <textarea class="form-control" id="field-issue_description" data-field="issue_description" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-error_messages"></span> Error Messages:</label>
+                                    <small class="text-muted">If applicable</small>
+                                </div>
+                                <textarea class="form-control" id="field-error_messages" data-field="error_messages" rows="2" placeholder="Enter any error messages displayed"></textarea>
+                            </div>
+                            
+                            <div class="form-field">
+                                <div class="d-flex justify-content-between">
+                                    <label><span class="field-status field-incomplete" id="status-troubleshooting_steps"></span> Troubleshooting Steps:</label>
+                                    <small class="text-muted">Required</small>
+                                </div>
+                                <textarea class="form-control" id="field-troubleshooting_steps" data-field="troubleshooting_steps" rows="2" placeholder="What has the caller already tried?"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Transcript</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="transcript-container" id="transcript-container">
+                            <div class="text-center text-muted p-5">
+                                <i class="bi bi-mic" style="font-size: 2rem;"></i>
+                                <p class="mt-2">Start recording to begin transcription</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Ticket Preview</h5>
+                        <button id="btn-copy-ticket" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-clipboard"></i> Copy to Clipboard
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="ticket-preview" id="ticket-preview">
+                            Support ticket data will appear here when information is collected.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+        // Connect to Socket.IO server
+        const socket = io();
+        
+        // DOM elements
+        const btnStartRecording = document.getElementById('btn-start-recording');
+        const btnStopRecording = document.getElementById('btn-stop-recording');
+        const btnPrevStage = document.getElementById('btn-prev-stage');
+        const btnNextStage = document.getElementById('btn-next-stage');
+        const btnCopyTicket = document.getElementById('btn-copy-ticket');
+        const statusBadge = document.getElementById('status-badge');
+        const timer = document.getElementById('timer');
+        const progressBar = document.getElementById('progress-bar');
+        const currentPrompt = document.getElementById('current-prompt');
+        const transcriptContainer = document.getElementById('transcript-container');
+        const ticketPreview = document.getElementById('ticket-preview');
+        const stageIndicator = document.getElementById('stage-indicator');
+        
+        // Variables
+        let isRecording = false;
+        let timerInterval;
+        let timerSeconds = 0;
+        let currentStage = 'intro';
+        let stages = [
+            'intro',
+            'caller_identity',
+            'company_info',
+            'software_details',
+            'issue_details',
+            'error_messages',
+            'troubleshooting_history',
+            'technician_availability',
+            'support_options',
+            'billing_confirmation',
+            'summary',
+            'next_steps'
+        ];
+        
+        // Initialize tooltips
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        
+        // Event listeners
+        btnStartRecording.addEventListener('click', startRecording);
+        btnStopRecording.addEventListener('click', stopRecording);
+        btnPrevStage.addEventListener('click', goToPreviousStage);
+        btnNextStage.addEventListener('click', goToNextStage);
+        btnCopyTicket.addEventListener('click', copyTicketToClipboard);
+        
+        // Add event listeners to all input fields
+        document.querySelectorAll('input, textarea, select').forEach(element => {
+            element.addEventListener('change', function() {
+                updateField(this.dataset.field, this.value);
+            });
+        });
+        
+        // Socket.IO event listeners
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+        
+        socket.on('transcript_update', (data) => {
+            addTranscriptEntry(data.text, new Date().toLocaleTimeString(), 'unknown');
+            
+            // If there's extracted information, update the fields
+            if (data.extracted_info) {
+                Object.entries(data.extracted_info).forEach(([field, value]) => {
+                    if (value) {
+                        const fieldElement = document.getElementById(`field-${field}`);
+                        if (fieldElement) {
+                            fieldElement.value = value;
+                            updateField(field, value);
+                        }
+                    }
+                });
+            }
+        });
+        
+        socket.on('status_update', (data) => {
+            updateCompletionStatus(data);
+        });
+        
+        socket.on('prompt_update', (data) => {
+            currentStage = data.stage;
+            currentPrompt.textContent = data.prompt;
+            updateStageIndicator();
+        });
+        
+        // Functions
+        function startRecording() {
+            fetch('/api/start_recording', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    isRecording = true;
+                    btnStartRecording.disabled = true;
+                    btnStopRecording.disabled = false;
+                    statusBadge.textContent = 'Recording';
+                    statusBadge.className = 'badge bg-danger text-white me-2';
+                    
+                    // Start timer
+                    startTimer();
+                    
+                    // Update transcript
+                    transcriptContainer.innerHTML = '<div class="text-center text-success mb-3">Recording in progress...</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error starting recording:', error);
+            });
+        }
+        
+        function stopRecording() {
+            fetch('/api/stop_recording', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    isRecording = false;
+                    btnStartRecording.disabled = false;
+                    btnStopRecording.disabled = true;
+                    statusBadge.textContent = 'Ready';
+                    statusBadge.className = 'badge bg-light text-dark me-2';
+                    
+                    // Stop timer
+                    clearInterval(timerInterval);
+                }
+            })
+            .catch(error => {
+                console.error('Error stopping recording:', error);
+            });
+        }
+        
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            timer.textContent = '00:00';
+            
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                const minutes = Math.floor(timerSeconds / 60);
+                const seconds = timerSeconds % 60;
+                timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        function goToPreviousStage() {
+            const currentIndex = stages.indexOf(currentStage);
+            if (currentIndex > 0) {
+                const previousStage = stages[currentIndex - 1];
+                setStage(previousStage);
+            }
+        }
+        
+        function goToNextStage() {
+            const currentIndex = stages.indexOf(currentStage);
+            if (currentIndex < stages.length - 1) {
+                const nextStage = stages[currentIndex + 1];
+                setStage(nextStage);
+            }
+        }
+        
+        function setStage(stage) {
+            fetch('/api/advance_stage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ stage: stage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Socket.IO will update the prompt and stage indicator
+                }
+            })
+            .catch(error => {
+                console.error('Error advancing stage:', error);
+            });
+        }
+        
+        function updateField(field, value) {
+            fetch('/api/update_field', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ field: field, value: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Visual feedback that the field was updated
+                    const statusElement = document.getElementById(`status-${field}`);
+                    if (statusElement) {
+                        statusElement.classList.remove('field-incomplete');
+                        statusElement.classList.add('field-complete');
+                    }
+                    
+                    // Update ticket preview
+                    updateTicketPreview();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating field:', error);
+            });
+        }
+        
+        function updateCompletionStatus(data) {
+            // Update progress bar
+            const percentage = data.percentage.toFixed(0);
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%`;
+            progressBar.setAttribute('aria-valuenow', percentage);
+            
+            // Update field status indicators
+            Object.entries(data.fields).forEach(([field, info]) => {
+                const statusElement = document.getElementById(`status-${field}`);
+                if (statusElement) {
+                    if (info.completed) {
+                        statusElement.classList.remove('field-incomplete');
+                        statusElement.classList.add('field-complete');
+                    } else {
+                        statusElement.classList.remove('field-complete');
+                        statusElement.classList.add('field-incomplete');
+                    }
+                }
+            });
+        }
+        
+        function updateStageIndicator() {
+            // Update the stage indicator
+            document.querySelectorAll('.stage').forEach(element => {
+                const stage = element.dataset.stage;
+                element.classList.remove('active', 'completed');
+                
+                if (stage === currentStage) {
+                    element.classList.add('active');
+                } else if (stages.indexOf(stage) < stages.indexOf(currentStage)) {
+                    element.classList.add('completed');
+                }
+            });
+        }
+        
+        function addTranscriptEntry(text, timestamp, speaker) {
+            // Remove placeholder if it exists
+            if (transcriptContainer.querySelector('.text-center')) {
+                transcriptContainer.innerHTML = '';
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = 'transcript-entry';
+            
+            entry.innerHTML = `
+                <div class="transcript-timestamp">${timestamp}</div>
+                <div>${text}</div>
+            `;
+            
+            transcriptContainer.appendChild(entry);
+            // Auto-scroll to bottom
+            transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        }
+        
+        function updateTicketPreview() {
+            fetch('/api/get_ticket_data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    ticketPreview.textContent = data.data;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting ticket data:', error);
+            });
+        }
+        
+        function copyTicketToClipboard() {
+            navigator.clipboard.writeText(ticketPreview.textContent)
+            .then(() => {
+                // Visual feedback that copy was successful
+                const originalText = btnCopyTicket.innerHTML;
+                btnCopyTicket.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                
+                setTimeout(() => {
+                    btnCopyTicket.innerHTML = originalText;
+                }, 2000);
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+        
+        // Initialize - update ticket preview on page load
+        updateTicketPreview();
+    </script>
+</body>
+</html>
+                            

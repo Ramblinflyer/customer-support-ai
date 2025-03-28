@@ -1,0 +1,23 @@
+# Support Call Assistant - Requirements
+# Python 3.9+ recommended
+
+# Core dependencies
+flask==2.3.3
+flask-socketio==5.3.6
+python-dotenv==1.0.0
+requests==2.31.0
+numpy==1.24.3
+
+# Audio capture (Windows compatible)
+sounddevice==0.4.6
+wavio==0.0.7
+
+# Deepgram API for transcription
+deepgram-sdk==2.11.0
+
+# Anthropic API for Claude
+anthropic==0.5.0
+
+# Web interface
+gunicorn==21.2.0
+eventlet==0.33.3  # For WebSocket support with gunicorn
